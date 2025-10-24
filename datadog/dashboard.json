@@ -1,0 +1,92 @@
+{
+  "title": "Memory Leak Demo - Kubernetes",
+  "description": "Dashboard para lab de memory leak em JVM + Kubernetes",
+  "widgets": [
+    {
+      "definition": {
+        "title": "Heap JVM (bytes)",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:jvm_memory_used_bytes{service:memory-leak-demo} by {pod_name}",
+            "display_type": "line",
+            "style": {"palette": "dog_classic", "type": "solid", "width": "normal"}
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "GC Count",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "sum:jvm_gc_pause_seconds_count{service:memory-leak-demo} by {pod_name}",
+            "display_type": "line",
+            "style": {"palette": "cool", "type": "solid", "width": "normal"}
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "Container Memory Usage",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:container.memory.usage{container_name:memory-leak-demo} by {pod_name}",
+            "display_type": "line",
+            "style": {"palette": "warm", "type": "solid", "width": "normal"}
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "Pod Restart Count",
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "max:kubernetes.pod.restart_count{pod_name:memory-leak-demo}",
+            "aggregator": "max"
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "OOM / Error Logs",
+        "type": "log_stream",
+        "requests": [
+          {
+            "query": "service:memory-leak-demo AND status:error",
+            "display_type": "log_stream",
+            "indexes": ["*"]
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "title": "Container CPU Usage",
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:container.cpu.usage{container_name:memory-leak-demo} by {pod_name}",
+            "display_type": "line",
+            "style": {"palette": "purple", "type": "solid", "width": "normal"}
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "note",
+        "content": "💡 Lab de Memory Leak: veja heap subindo, GC spikes, pod reiniciando por OOM, logs de erro. Use /leak e /reset para simular e limpar heap."
+      }
+    }
+  ],
+  "layout_type": "ordered",
+  "is_read_only": false,
+  "notify_list": []
+}

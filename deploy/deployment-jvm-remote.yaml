@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memory-leak-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memory-leak-demo
+  labels:
+    tags.datadoghq.com/env: "prod"
+    tags.datadoghq.com/service: "memory-leak-demo"
+    tags.datadoghq.com/version: "0.0.1"
+  template:
+    metadata:
+      labels:
+        app: memory-leak-demo
+        tags.datadoghq.com/env: "dev"
+        tags.datadoghq.com/service: "memory-leak-demo"
+        tags.datadoghq.com/version: "0.0.1"
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+         #admission.datadoghq.com/java-lib.version: "latest"
+         admission.datadoghq.com/java-lib.version: "1.38.0"
+    spec:
+      containers:
+        - name: memory-leak-demo
+          image: 910943688858.dkr.ecr.us-east-1.amazonaws.com/leak-spring:0.0.1
+          ports:
+            - containerPort: 8080   # HTTP app
+            - containerPort: 9010   # JMX
+          env:
+            - name: DD_AGENT_HOST
+              value: "datadog.datadog-agent"
+            - name: DD_ENV
+              value: "prod"
+            - name: DD_VERSION
+              value: "0.0.1"
+            - name: DD_TAGS
+              value: "service:memory-leak-demo env:prod version:0.0.1"
+            - name: JAVA_OPTS
+              value: >
+                -Xms64m -Xmx128m
+                -XX:+HeapDumpOnOutOfMemoryError
+                -XX:HeapDumpPath=/heapdumps
+                -Dcom.sun.management.jmxremote
+                -Dcom.sun.management.jmxremote.port=9010
+                -Dcom.sun.management.jmxremote.rmi.port=9010
+                -Dcom.sun.management.jmxremote.local.only=false
+                -Dcom.sun.management.jmxremote.authenticate=false
+                -Dcom.sun.management.jmxremote.ssl=false
+                -Djava.rmi.server.hostname=127.0.0.1
+          volumeMounts:
+            - name: heapdumps
+              mountPath: /heapdumps
+      volumes:
+        - name: heapdumps
+          emptyDir: {}
+apiVersion: v1
+kind: Service
+metadata:
+  name: memory-leak-demo
+spec:
+  selector:
+    app: memory-leak-demo
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: memory-leak-demo
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: leak.plat.drmonitora.com.br
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: memory-leak-demo
+                port:
+                  number: 8080
+            path: /
